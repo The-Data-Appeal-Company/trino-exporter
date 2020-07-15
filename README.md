@@ -1,6 +1,6 @@
 # presto-exporter 
 [![Go Report Card](https://goreportcard.com/badge/github.com/The-Data-Appeal-Company/presto-exporter)](https://goreportcard.com/report/github.com/The-Data-Appeal-Company/presto-exporter)
-[![MicroBadger Size](https://img.shields.io/microbadger/image-size/The-Data-Appeal-Company/presto-exporter)](https://cloud.docker.com/u/garugaru/repository/docker/The-Data-Appeal-Company/presto-exporter)
+[![MicroBadger Size](https://img.shields.io/microbadger/image-size/The-Data-Appeal-Company/presto-exporter)](https://cloud.docker.com/u/garugaru/repository/docker/garugaru/presto-exporter)
 
 
 Prometheus exporter for presto with aws auto discovery 
