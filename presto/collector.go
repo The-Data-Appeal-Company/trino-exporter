@@ -133,7 +133,6 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 			return
 		}
 
-
 		out <- prometheus.MustNewConstMetric(runningQueries, prometheus.GaugeValue, response.RunningQueries, labelValues...)
 		out <- prometheus.MustNewConstMetric(blockedQueries, prometheus.GaugeValue, response.BlockedQueries, labelValues...)
 		out <- prometheus.MustNewConstMetric(queuedQueries, prometheus.GaugeValue, response.QueuedQueries, labelValues...)
