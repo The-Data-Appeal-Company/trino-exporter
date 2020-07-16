@@ -58,6 +58,11 @@ var (
 		"Total cpu time of the presto cluster.",
 		[]string{"cluster_name"}, nil,
 	)
+	up = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "up"),
+		"Presto health check.",
+		[]string{"cluster_name"}, nil,
+	)
 )
 
 type Collector struct {
@@ -84,6 +89,7 @@ func (c Collector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- totalInputRows
 	ch <- totalInputBytes
 	ch <- totalCpuTimeSecs
+	ch <- up
 }
 
 func (c Collector) Collect(out chan<- prometheus.Metric) {
@@ -98,13 +104,17 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 		url := fmt.Sprintf("http://%s/v1/cluster", hostPort)
 		resp, err := c.client.Get(url)
 
+		labelValues := []string{name}
+
 		if err != nil {
 			logrus.Error(err)
+			out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, labelValues...)
 			return
 		}
 
 		if resp.StatusCode != 200 {
 			logrus.Errorf("unexpected status code %d != 200", resp.StatusCode)
+			out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, labelValues...)
 			return
 		}
 
@@ -123,7 +133,6 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 			return
 		}
 
-		labelValues := []string{name}
 
 		out <- prometheus.MustNewConstMetric(runningQueries, prometheus.GaugeValue, response.RunningQueries, labelValues...)
 		out <- prometheus.MustNewConstMetric(blockedQueries, prometheus.GaugeValue, response.BlockedQueries, labelValues...)
@@ -134,7 +143,7 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 		out <- prometheus.MustNewConstMetric(totalInputRows, prometheus.GaugeValue, response.TotalInputRows, labelValues...)
 		out <- prometheus.MustNewConstMetric(totalInputBytes, prometheus.GaugeValue, response.TotalInputBytes, labelValues...)
 		out <- prometheus.MustNewConstMetric(totalCpuTimeSecs, prometheus.GaugeValue, response.TotalCpuTimeSecs, labelValues...)
-
+		out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 1, labelValues...)
 	}
 }
 

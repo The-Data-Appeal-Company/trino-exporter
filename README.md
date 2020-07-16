@@ -21,6 +21,7 @@ presto-exporter --aws-autodiscovery=true
 ## Exported metrics 
 **Each metric has a label called *cluster_name***
 
+* presto_cluster_up 
 * presto_cluster_active_workers
 * presto_cluster_blocked_queries          
 * presto_cluster_queued_queries           
