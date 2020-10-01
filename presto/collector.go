@@ -1,7 +1,9 @@
 package presto
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -75,6 +77,9 @@ func NewCollector(clusterProvider ClusterProvider) Collector {
 		clusterProvider: clusterProvider,
 		client: &http.Client{
 			Timeout: 10 * time.Second,
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 	}
 }
@@ -99,37 +104,14 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 		return
 	}
 
-	for name, hostPort := range clusters {
+	for name, cluster := range clusters {
 
-		url := fmt.Sprintf("http://%s/v1/cluster", hostPort)
-		resp, err := c.client.Get(url)
-
+		response, err := c.statisticsFromCluster(cluster)
 		labelValues := []string{name}
 
 		if err != nil {
 			logrus.Error(err)
 			out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, labelValues...)
-			return
-		}
-
-		if resp.StatusCode != 200 {
-			logrus.Errorf("unexpected status code %d != 200", resp.StatusCode)
-			out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, labelValues...)
-			return
-		}
-
-		defer resp.Body.Close()
-
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			logrus.Error(err)
-			return
-		}
-
-		var response Response
-		err = json.Unmarshal(body, &response)
-		if err != nil {
-			logrus.Error(err)
 			return
 		}
 
@@ -144,6 +126,98 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 		out <- prometheus.MustNewConstMetric(totalCpuTimeSecs, prometheus.GaugeValue, response.TotalCpuTimeSecs, labelValues...)
 		out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 1, labelValues...)
 	}
+}
+
+func (c Collector) statisticsFromCluster(cluster ClusterInfo) (Response, error) {
+	switch cluster.Distribution {
+	case DistSql:
+		return c.statsFromPrestoSQL(cluster)
+	case DistDb:
+		return c.statsFromPrestoDB(cluster)
+	default:
+		return Response{}, fmt.Errorf("unsupported distribution %s", cluster.Distribution)
+	}
+}
+
+func (c Collector) statsFromPrestoDB(cluster ClusterInfo) (Response, error) {
+	url := fmt.Sprintf("%s/v1/cluster", cluster.Host)
+	resp, err := c.client.Get(url)
+
+	if err != nil {
+		return Response{}, err
+	}
+
+	if resp.StatusCode != 200 {
+		return Response{}, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		logrus.Error(err)
+		return Response{}, err
+	}
+
+	var response Response
+	err = json.Unmarshal(body, &response)
+	return response, err
+}
+
+func (c Collector) statsFromPrestoSQL(cluster ClusterInfo) (Response, error) {
+
+	login, err := c.login(cluster)
+	if err != nil {
+		return Response{}, err
+	}
+
+	apiStatsUrl := fmt.Sprintf("%s%s", cluster.Host, "/ui/api/stats")
+	req, err := http.NewRequest("GET", apiStatsUrl, nil)
+	if err != nil {
+		return Response{}, err
+	}
+
+	req.Header.Set("Cookie", login)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return Response{}, err
+	}
+
+
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return Response{}, err
+	}
+
+	var response Response
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return Response{}, err
+	}
+
+	return response, nil
+}
+
+func (c Collector) login(cluster ClusterInfo) (string, error) {
+	loginUrl := fmt.Sprintf("%s%s", cluster.Host, "/ui/login")
+	const contentType = "application/x-www-form-urlencoded"
+	const userName = "exporter"
+	body := bytes.NewBuffer([]byte(fmt.Sprintf("username=%s&password=&redirectPath=", userName)))
+	resp, err := c.client.Post(loginUrl, contentType, body)
+	if err != nil {
+		return "", err
+	}
+
+	cookie := resp.Header.Get("Set-Cookie")
+
+	if cookie == "" {
+		return "", errors.New("no Set-Cookie header present in response")
+	}
+
+	return cookie, nil
 }
 
 type Response struct {

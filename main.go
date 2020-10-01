@@ -48,13 +48,16 @@ type FlagClusterProvider struct {
 	flag string
 }
 
-func (f FlagClusterProvider) Provide() (map[string]string, error) {
+func (f FlagClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 	cnt := len(f.flag)
-	clustersToMonitor := make(map[string]string, cnt)
+	clustersToMonitor := make(map[string]presto.ClusterInfo, cnt)
 	if cnt != 0 {
 		clusters := strings.Split(f.flag, ",")
 		for _, c := range clusters {
-			clustersToMonitor[c] = c
+			clustersToMonitor[c] = presto.ClusterInfo{
+				Host:         c,
+				Distribution: presto.DistDb,
+			}
 		}
 	}
 	return clustersToMonitor, nil

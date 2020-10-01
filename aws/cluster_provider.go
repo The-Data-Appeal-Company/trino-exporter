@@ -2,12 +2,14 @@ package aws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/emr"
 	"github.com/patrickmn/go-cache"
+	"presto-exporter/presto"
 	"strings"
 	"time"
 )
@@ -32,10 +34,10 @@ func NewClusterProvider() *ClusterProvider {
 
 const cacheKey = "master"
 
-func (c *ClusterProvider) Provide() (map[string]string, error) {
+func (c *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 	result, cached := c.cache.Get(cacheKey)
 	if cached {
-		return result.(map[string]string), nil
+		return result.(map[string]presto.ClusterInfo), nil
 	}
 
 	masters, err := c.listTargetMasters(context.Background())
@@ -48,9 +50,9 @@ func (c *ClusterProvider) Provide() (map[string]string, error) {
 	return masters, nil
 }
 
-func (c *ClusterProvider) listTargetMasters(ctx context.Context) (map[string]string, error) {
+func (c *ClusterProvider) listTargetMasters(ctx context.Context) (map[string]presto.ClusterInfo, error) {
 
-	clusterWithMaster := make(map[string]string)
+	clusterWithMaster := make(map[string]presto.ClusterInfo)
 
 	clusters, err := c.listTargetClusters(ctx)
 
@@ -64,7 +66,15 @@ func (c *ClusterProvider) listTargetMasters(ctx context.Context) (map[string]str
 			return nil, err
 		}
 
-		clusterWithMaster[*cluster.Cluster.Name] = fmt.Sprintf("%s:8889", master)
+		dist, err := prestoInstalledDistribution(cluster.Cluster.Applications)
+		if err != nil {
+			return nil, err
+		}
+
+		clusterWithMaster[*cluster.Cluster.Name] = presto.ClusterInfo{
+			Host:         fmt.Sprintf("http://%s:8889", master),
+			Distribution: dist,
+		}
 	}
 
 	return clusterWithMaster, nil
@@ -162,9 +172,22 @@ func (c *ClusterProvider) getMasterInstanceForNodeGroup(cluster *emr.DescribeClu
 
 func hasPrestoInstalled(descr *emr.DescribeClusterOutput) bool {
 	for _, application := range descr.Cluster.Applications {
-		if strings.ToLower(*application.Name) == "presto" {
+		if strings.ToLower(*application.Name) == "presto" || strings.ToLower(*application.Name) == "prestosql" {
 			return true
 		}
 	}
 	return false
+}
+
+func prestoInstalledDistribution(descr []*emr.Application) (presto.Distribution, error) {
+	for _, application := range descr {
+		if strings.ToLower(*application.Name) == "presto" {
+			return presto.DistDb, nil
+		}
+		if strings.ToLower(*application.Name) == "prestosql" {
+			return presto.DistSql, nil
+		}
+
+	}
+	return "", errors.New("unable to detect presto distribution")
 }
