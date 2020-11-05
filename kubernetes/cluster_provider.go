@@ -47,6 +47,7 @@ func NewClusterProvider(k8sClient k8s.Interface, clusterDomain string) *ClusterP
 }
 
 const cacheKey = "k8s-cluster-provider"
+
 func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 
 	result, cached := k.cache.Get(cacheKey)
@@ -76,7 +77,8 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 
 			servicePort, err := portByName(svc.Spec.Ports, svcPortName)
 			if err != nil {
-				return nil, err
+				logrus.Debug(err)
+				continue
 			}
 
 			svcUrl, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.%s:%d", svc.Name, svc.Namespace, k.clusterDomain, servicePort.Port))
