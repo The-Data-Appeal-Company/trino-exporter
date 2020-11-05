@@ -7,7 +7,6 @@ import (
 	"github.com/sirupsen/logrus"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"net/url"
@@ -22,7 +21,6 @@ const (
 type ClusterProvider struct {
 	k8sClient     k8s.Interface
 	cache         *cache.Cache
-	SelectorTags  map[string]string
 	clusterDomain string
 }
 
@@ -66,9 +64,7 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 	}
 
 	for _, ns := range namespaces.Items {
-		services, err := k.k8sClient.CoreV1().Services(ns.Name).List(ctx, v1.ListOptions{
-			LabelSelector: labels.FormatLabels(k.SelectorTags),
-		})
+		services, err := k.k8sClient.CoreV1().Services(ns.Name).List(ctx, v1.ListOptions{})
 
 		if err != nil {
 			return nil, err
@@ -88,7 +84,7 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 				return nil, err
 			}
 
-			dist, err := extractDist(k.SelectorTags)
+			dist, err := extractDist(svc.Labels)
 
 			if err != nil {
 				return nil, err
