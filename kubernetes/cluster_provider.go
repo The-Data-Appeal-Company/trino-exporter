@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"github.com/patrickmn/go-cache"
 	"github.com/sirupsen/logrus"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/client-go/rest"
 	"net/url"
 	"presto-exporter/presto"
+	"time"
 )
 
 const (
@@ -19,6 +21,7 @@ const (
 
 type ClusterProvider struct {
 	k8sClient     k8s.Interface
+	cache         *cache.Cache
 	SelectorTags  map[string]string
 	clusterDomain string
 }
@@ -38,10 +41,20 @@ func NewInClusterProvider(clusterDomain string) (*ClusterProvider, error) {
 }
 
 func NewClusterProvider(k8sClient k8s.Interface, clusterDomain string) *ClusterProvider {
-	return &ClusterProvider{k8sClient: k8sClient, clusterDomain: clusterDomain}
+	return &ClusterProvider{
+		k8sClient:     k8sClient,
+		clusterDomain: clusterDomain,
+		cache:         cache.New(10*time.Minute, 24*time.Hour),
+	}
 }
 
+const cacheKey = "k8s-cluster-provider"
 func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
+
+	result, cached := k.cache.Get(cacheKey)
+	if cached {
+		return result.(map[string]presto.ClusterInfo), nil
+	}
 
 	ctx := context.TODO()
 
@@ -90,6 +103,7 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 		}
 	}
 
+	k.cache.Set(cacheKey, coordinators, 30*time.Minute)
 	return coordinators, nil
 }
 
