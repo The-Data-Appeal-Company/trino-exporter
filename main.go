@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"presto-exporter/aws"
+	k8s "presto-exporter/kubernetes"
 	"presto-exporter/presto"
 	"strings"
 )
@@ -17,6 +18,7 @@ func main() {
 	port := flag.Int("port", 9999, "web server port")
 	metricsPath := flag.String("path", "/metrics", "exporter metrics path")
 	awsAutoDiscovery := flag.Bool("aws-autodiscovery", false, "autodiscover cluster in aws (may require permissions)")
+	k8sAutoDiscovery := flag.Bool("k8s-autodiscovery", false, "autodiscover cluster in k8s (may require permissions)")
 	clustersRaw := flag.String("cluster", "127.0.0.1:8889", "clusters to monitor separated by ','")
 
 	flag.Parse()
@@ -25,10 +27,21 @@ func main() {
 
 	registry := prometheus.NewRegistry()
 
-	var clusterProvider presto.ClusterProvider = FlagClusterProvider{flag: *clustersRaw}
+	var clusterProvider = presto.NewMultiClusterProvider()
+
+	clusterProvider.Add(FlagClusterProvider{flag: *clustersRaw})
 
 	if *awsAutoDiscovery {
-		clusterProvider = aws.NewClusterProvider()
+		clusterProvider.Add(aws.NewClusterProvider())
+	}
+
+	if *k8sAutoDiscovery{
+		provider, err := k8s.NewInClusterProvider("cluster.local")
+		if err != nil{
+			log.Fatal(err)
+		}
+
+		clusterProvider.Add(provider)
 	}
 
 	registry.MustRegister(presto.NewCollector(clusterProvider))
