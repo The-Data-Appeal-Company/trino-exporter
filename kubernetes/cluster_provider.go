@@ -73,8 +73,6 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 
 		for _, svc := range services.Items {
 
-			logrus.Infof("service %s", svc.Name)
-
 			servicePort, err := portByName(svc.Spec.Ports, svcPortName)
 			if err != nil {
 				logrus.Debug(err)
@@ -94,6 +92,7 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 
 			name := fmt.Sprintf("%s,%s", svc.Namespace, svc.Name)
 
+			logrus.Infof("discovered service %s", svc.Name)
 			coordinators[name] = presto.ClusterInfo{
 				Host:         svcUrl.String(),
 				Distribution: dist,
