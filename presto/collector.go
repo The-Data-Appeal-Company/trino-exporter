@@ -220,7 +220,6 @@ func (c Collector) login(cluster ClusterInfo) (string, error) {
 }
 
 type Response struct {
-	uri              string
 	RunningQueries   float64 `json:"runningQueries"`
 	BlockedQueries   float64 `json:"blockedQueries"`
 	QueuedQueries    float64 `json:"queuedQueries"`

@@ -161,7 +161,7 @@ func (c *ClusterProvider) getMasterInstanceForNodeGroup(cluster *emr.DescribeClu
 		}
 
 		if len(instances.Instances) == 0 {
-			return "", fmt.Errorf("no master instances found for cluster %s", *cluster.Cluster.Id)
+			continue
 		}
 
 		return *instances.Instances[0].PrivateIpAddress, nil
