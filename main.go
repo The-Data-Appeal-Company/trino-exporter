@@ -36,11 +36,11 @@ func main() {
 		clusterProvider.Add(aws.NewClusterProvider())
 	}
 
-	if *k8sAutoDiscovery{
+	if *k8sAutoDiscovery {
 		log.Info("enabled k8s in cluster discovery")
 
 		provider, err := k8s.NewInClusterProvider("cluster.local")
-		if err != nil{
+		if err != nil {
 			log.Fatal(err)
 		}
 
@@ -50,6 +50,11 @@ func main() {
 	registry.MustRegister(presto.NewCollector(clusterProvider))
 
 	http.Handle(*metricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
+	http.Handle("/healthz", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if _, err := writer.Write([]byte("OK")); err != nil {
+			log.Error(err)
+		}
+	}))
 
 	bind := fmt.Sprintf("%s:%d", *addr, *port)
 
