@@ -72,6 +72,11 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 		}
 
 		for _, svc := range services.Items {
+			dist, err := extractDist(svc.Labels)
+
+			if err != nil {
+				return nil, err
+			}
 
 			servicePort, err := portByName(svc.Spec.Ports, svcPortName)
 			if err != nil {
@@ -80,12 +85,6 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 			}
 
 			svcUrl, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.%s:%d", svc.Name, svc.Namespace, k.clusterDomain, servicePort.Port))
-			if err != nil {
-				return nil, err
-			}
-
-			dist, err := extractDist(svc.Labels)
-
 			if err != nil {
 				return nil, err
 			}

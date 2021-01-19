@@ -112,7 +112,7 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 		if err != nil {
 			logrus.Error(err)
 			out <- prometheus.MustNewConstMetric(up, prometheus.GaugeValue, 0, labelValues...)
-			return
+			continue
 		}
 
 		out <- prometheus.MustNewConstMetric(runningQueries, prometheus.GaugeValue, response.RunningQueries, labelValues...)
@@ -165,7 +165,6 @@ func (c Collector) statsFromPrestoDB(cluster ClusterInfo) (Response, error) {
 }
 
 func (c Collector) statsFromPrestoSQL(cluster ClusterInfo) (Response, error) {
-
 	login, err := c.login(cluster)
 	if err != nil {
 		return Response{}, err
