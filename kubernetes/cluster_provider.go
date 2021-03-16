@@ -10,12 +10,12 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"net/url"
-	"presto-exporter/presto"
 	"time"
+	"trino-exporter/trino"
 )
 
 const (
-	svcPortName = "http-coord"
+	svcPortName = "http"
 )
 
 type ClusterProvider struct {
@@ -48,16 +48,16 @@ func NewClusterProvider(k8sClient k8s.Interface, clusterDomain string) *ClusterP
 
 const cacheKey = "k8s-cluster-provider"
 
-func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
+func (k *ClusterProvider) Provide() (map[string]trino.ClusterInfo, error) {
 
 	result, cached := k.cache.Get(cacheKey)
 	if cached {
-		return result.(map[string]presto.ClusterInfo), nil
+		return result.(map[string]trino.ClusterInfo), nil
 	}
 
 	ctx := context.TODO()
 
-	coordinators := make(map[string]presto.ClusterInfo)
+	coordinators := make(map[string]trino.ClusterInfo)
 
 	namespaces, err := k.k8sClient.CoreV1().Namespaces().List(ctx, v1.ListOptions{})
 	if err != nil {
@@ -72,12 +72,6 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 		}
 
 		for _, svc := range services.Items {
-			dist, err := extractDist(svc.Labels)
-
-			if err != nil {
-				return nil, err
-			}
-
 			servicePort, err := portByName(svc.Spec.Ports, svcPortName)
 			if err != nil {
 				logrus.Debug(err)
@@ -92,30 +86,14 @@ func (k *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 			name := fmt.Sprintf("%s,%s", svc.Namespace, svc.Name)
 
 			logrus.Infof("discovered service %s", svc.Name)
-			coordinators[name] = presto.ClusterInfo{
-				Host:         svcUrl.String(),
-				Distribution: dist,
+			coordinators[name] = trino.ClusterInfo{
+				Host: svcUrl.String(),
 			}
 		}
 	}
 
 	k.cache.Set(cacheKey, coordinators, 30*time.Minute)
 	return coordinators, nil
-}
-
-func extractDist(tags map[string]string) (presto.Distribution, error) {
-	raw, present := tags["presto.distribution"]
-	if !present {
-		return presto.DistSql, nil
-	}
-	switch raw {
-	case "prestodb":
-		return presto.DistDb, nil
-	case "prestosql":
-		return presto.DistSql, nil
-	default:
-		return "", nil
-	}
 }
 
 func portByName(ports []v12.ServicePort, name string) (v12.ServicePort, error) {

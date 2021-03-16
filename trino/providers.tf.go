@@ -1,17 +1,9 @@
-package presto
+package trino
 
 import "fmt"
 
-type Distribution string
-
-const (
-	DistSql Distribution = "sql"
-	DistDb  Distribution = "db"
-)
-
 type ClusterInfo struct {
-	Host         string
-	Distribution Distribution
+	Host string
 }
 
 type ClusterProvider interface {

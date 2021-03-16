@@ -7,10 +7,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"presto-exporter/aws"
-	k8s "presto-exporter/kubernetes"
-	"presto-exporter/presto"
 	"strings"
+	"trino-exporter/aws"
+	k8s "trino-exporter/kubernetes"
+	"trino-exporter/trino"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 
 	registry := prometheus.NewRegistry()
 
-	var clusterProvider = presto.NewMultiClusterProvider()
+	var clusterProvider = trino.NewMultiClusterProvider()
 
 	clusterProvider.Add(FlagClusterProvider{flag: *clustersRaw})
 
@@ -47,7 +47,7 @@ func main() {
 		clusterProvider.Add(provider)
 	}
 
-	registry.MustRegister(presto.NewCollector(clusterProvider))
+	registry.MustRegister(trino.NewCollector(clusterProvider))
 
 	http.Handle(*metricsPath, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}))
 	http.Handle("/healthz", http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -69,15 +69,14 @@ type FlagClusterProvider struct {
 	flag string
 }
 
-func (f FlagClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
+func (f FlagClusterProvider) Provide() (map[string]trino.ClusterInfo, error) {
 	cnt := len(f.flag)
-	clustersToMonitor := make(map[string]presto.ClusterInfo, cnt)
+	clustersToMonitor := make(map[string]trino.ClusterInfo, cnt)
 	if cnt != 0 {
 		clusters := strings.Split(f.flag, ",")
 		for _, c := range clusters {
-			clustersToMonitor[c] = presto.ClusterInfo{
-				Host:         c,
-				Distribution: presto.DistDb,
+			clustersToMonitor[c] = trino.ClusterInfo{
+				Host: c,
 			}
 		}
 	}

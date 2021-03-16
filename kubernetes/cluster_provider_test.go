@@ -65,7 +65,7 @@ func (ms mockServiceDefault) List(ctx context.Context, opts metav1.ListOptions) 
 
 func (ms mockServiceNs1) List(ctx context.Context, opts metav1.ListOptions) (*v1.ServiceList, error) {
 
-	if strings.Contains(opts.LabelSelector, "presto.distribution=prestosql") {
+	if strings.Contains(opts.LabelSelector, "trino.distribution=prestosql") {
 
 		return &v1.ServiceList{
 			TypeMeta: metav1.TypeMeta{},
@@ -124,7 +124,7 @@ func (ms mockServiceNs1) List(ctx context.Context, opts metav1.ListOptions) (*v1
 }
 
 func (ms mockServiceNs2) List(ctx context.Context, opts metav1.ListOptions) (*v1.ServiceList, error) {
-	if strings.Contains(opts.LabelSelector, "presto.distribution=prestosql") {
+	if strings.Contains(opts.LabelSelector, "trino.distribution=prestosql") {
 		return &v1.ServiceList{
 			TypeMeta: metav1.TypeMeta{},
 			ListMeta: metav1.ListMeta{},
@@ -173,7 +173,6 @@ func (mn mockNamespace) List(ctx context.Context, opts metav1.ListOptions) (*v1.
 		},
 	}, nil
 }
-
 
 func TestClusterProviderKubernetes(t *testing.T) {
 
