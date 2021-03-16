@@ -65,14 +65,14 @@ func (ms mockServiceDefault) List(ctx context.Context, opts metav1.ListOptions) 
 
 func (ms mockServiceNs1) List(ctx context.Context, opts metav1.ListOptions) (*v1.ServiceList, error) {
 
-	if strings.Contains(opts.LabelSelector, "presto.distribution=prestosql") {
+	if strings.Contains(opts.LabelSelector, "trino.distribution=trino-exportersql") {
 
 		return &v1.ServiceList{
 			TypeMeta: metav1.TypeMeta{},
 			ListMeta: metav1.ListMeta{},
 			Items: []v1.Service{
 				{ObjectMeta: metav1.ObjectMeta{
-					Name:      "prestosql-1",
+					Name:      "trino-exportersql-1",
 					Namespace: "ns-1",
 				},
 					Spec: v1.ServiceSpec{
@@ -85,7 +85,7 @@ func (ms mockServiceNs1) List(ctx context.Context, opts metav1.ListOptions) (*v1
 						},
 					}},
 				{ObjectMeta: metav1.ObjectMeta{
-					Name:      "prestosql-12",
+					Name:      "trino-exportersql-12",
 					Namespace: "ns-1",
 				},
 					Spec: v1.ServiceSpec{
@@ -107,7 +107,7 @@ func (ms mockServiceNs1) List(ctx context.Context, opts metav1.ListOptions) (*v1
 		ListMeta: metav1.ListMeta{},
 		Items: []v1.Service{
 			{ObjectMeta: metav1.ObjectMeta{
-				Name:      "prestodb-1",
+				Name:      "trino-exporterdb-1",
 				Namespace: "ns-1",
 			}, Spec: v1.ServiceSpec{
 				Ports: []v1.ServicePort{
@@ -124,13 +124,13 @@ func (ms mockServiceNs1) List(ctx context.Context, opts metav1.ListOptions) (*v1
 }
 
 func (ms mockServiceNs2) List(ctx context.Context, opts metav1.ListOptions) (*v1.ServiceList, error) {
-	if strings.Contains(opts.LabelSelector, "presto.distribution=prestosql") {
+	if strings.Contains(opts.LabelSelector, "trino.distribution=trino-exportersql") {
 		return &v1.ServiceList{
 			TypeMeta: metav1.TypeMeta{},
 			ListMeta: metav1.ListMeta{},
 			Items: []v1.Service{
 				{ObjectMeta: metav1.ObjectMeta{
-					Name:      "prestosql-2",
+					Name:      "trino-exportersql-2",
 					Namespace: "ns-2",
 				}, Spec: v1.ServiceSpec{
 					Ports: []v1.ServicePort{
@@ -173,7 +173,6 @@ func (mn mockNamespace) List(ctx context.Context, opts metav1.ListOptions) (*v1.
 		},
 	}, nil
 }
-
 
 func TestClusterProviderKubernetes(t *testing.T) {
 

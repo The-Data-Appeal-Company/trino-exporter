@@ -2,16 +2,15 @@ package aws
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/emr"
 	"github.com/patrickmn/go-cache"
-	"presto-exporter/presto"
 	"strings"
 	"time"
+	"trino-exporter/trino"
 )
 
 type ClusterProvider struct {
@@ -34,10 +33,10 @@ func NewClusterProvider() *ClusterProvider {
 
 const cacheKey = "master"
 
-func (c *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
+func (c *ClusterProvider) Provide() (map[string]trino.ClusterInfo, error) {
 	result, cached := c.cache.Get(cacheKey)
 	if cached {
-		return result.(map[string]presto.ClusterInfo), nil
+		return result.(map[string]trino.ClusterInfo), nil
 	}
 
 	masters, err := c.listTargetMasters(context.Background())
@@ -50,9 +49,9 @@ func (c *ClusterProvider) Provide() (map[string]presto.ClusterInfo, error) {
 	return masters, nil
 }
 
-func (c *ClusterProvider) listTargetMasters(ctx context.Context) (map[string]presto.ClusterInfo, error) {
+func (c *ClusterProvider) listTargetMasters(ctx context.Context) (map[string]trino.ClusterInfo, error) {
 
-	clusterWithMaster := make(map[string]presto.ClusterInfo)
+	clusterWithMaster := make(map[string]trino.ClusterInfo)
 
 	clusters, err := c.listTargetClusters(ctx)
 
@@ -66,14 +65,8 @@ func (c *ClusterProvider) listTargetMasters(ctx context.Context) (map[string]pre
 			return nil, err
 		}
 
-		dist, err := prestoInstalledDistribution(cluster.Cluster.Applications)
-		if err != nil {
-			return nil, err
-		}
-
-		clusterWithMaster[*cluster.Cluster.Name] = presto.ClusterInfo{
-			Host:         fmt.Sprintf("http://%s:8889", master),
-			Distribution: dist,
+		clusterWithMaster[*cluster.Cluster.Name] = trino.ClusterInfo{
+			Host: fmt.Sprintf("http://%s:8889", master),
 		}
 	}
 
@@ -94,7 +87,7 @@ func (c *ClusterProvider) listTargetClusters(ctx context.Context) ([]*emr.Descri
 				ClusterId: cluster.Id,
 			})
 
-			if !hasPrestoInstalled(descr) {
+			if !isTrinoInstalled(descr) {
 				continue
 			}
 
@@ -170,24 +163,11 @@ func (c *ClusterProvider) getMasterInstanceForNodeGroup(cluster *emr.DescribeClu
 	return "", fmt.Errorf("no master instance found for cluster %s", *cluster.Cluster.Id)
 }
 
-func hasPrestoInstalled(descr *emr.DescribeClusterOutput) bool {
+func isTrinoInstalled(descr *emr.DescribeClusterOutput) bool {
 	for _, application := range descr.Cluster.Applications {
-		if strings.ToLower(*application.Name) == "presto" || strings.ToLower(*application.Name) == "prestosql" {
+		if strings.ToLower(*application.Name) == "trino" || strings.ToLower(*application.Name) == "trinodb" {
 			return true
 		}
 	}
 	return false
-}
-
-func prestoInstalledDistribution(descr []*emr.Application) (presto.Distribution, error) {
-	for _, application := range descr {
-		if strings.ToLower(*application.Name) == "presto" {
-			return presto.DistDb, nil
-		}
-		if strings.ToLower(*application.Name) == "prestosql" {
-			return presto.DistSql, nil
-		}
-
-	}
-	return "", errors.New("unable to detect presto distribution")
 }

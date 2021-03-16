@@ -1,6 +1,6 @@
-module presto-exporter
+module trino-exporter
 
-go 1.15
+go 1.16
 
 require (
 	github.com/aws/aws-sdk-go v1.33.5

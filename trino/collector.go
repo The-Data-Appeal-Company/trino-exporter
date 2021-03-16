@@ -1,4 +1,4 @@
-package presto
+package trino
 
 import (
 	"bytes"
@@ -12,57 +12,57 @@ import (
 	"time"
 )
 
-var namespace = "presto_cluster"
+var namespace = "trino_cluster"
 
 var (
 	runningQueries = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "running_queries"),
-		"Running requests of the presto cluster.",
+		"Running requests of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	blockedQueries = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "blocked_queries"),
-		"Blocked queries of the presto cluster.",
+		"Blocked queries of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	queuedQueries = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "queued_queries"),
-		"Queued queries of the presto cluster.",
+		"Queued queries of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	activeWorkers = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "active_workers"),
-		"Active workers of the presto cluster.",
+		"Active workers of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	runningDrivers = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "running_drivers"),
-		"Running drivers of the presto cluster.",
+		"Running drivers of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	reservedMemory = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "reserved_memory"),
-		"Reserved memory of the presto cluster.",
+		"Reserved memory of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	totalInputRows = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "total_input_rows"),
-		"Total input rows of the presto cluster.",
+		"Total input rows of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	totalInputBytes = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "total_input_bytes"),
-		"Total input bytes of the presto cluster.",
+		"Total input bytes of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	totalCpuTimeSecs = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "total_cpu_time_secs"),
-		"Total cpu time of the presto cluster.",
+		"Total cpu time of the trino cluster.",
 		[]string{"cluster_name"}, nil,
 	)
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "up"),
-		"Presto health check.",
+		"trino-exporter health check.",
 		[]string{"cluster_name"}, nil,
 	)
 )
@@ -129,42 +129,10 @@ func (c Collector) Collect(out chan<- prometheus.Metric) {
 }
 
 func (c Collector) statisticsFromCluster(cluster ClusterInfo) (Response, error) {
-	switch cluster.Distribution {
-	case DistSql:
-		return c.statsFromPrestoSQL(cluster)
-	case DistDb:
-		return c.statsFromPrestoDB(cluster)
-	default:
-		return Response{}, fmt.Errorf("unsupported distribution %s", cluster.Distribution)
-	}
+	return c.readClusterStats(cluster)
 }
 
-func (c Collector) statsFromPrestoDB(cluster ClusterInfo) (Response, error) {
-	url := fmt.Sprintf("%s/v1/cluster", cluster.Host)
-	resp, err := c.client.Get(url)
-
-	if err != nil {
-		return Response{}, err
-	}
-
-	if resp.StatusCode != 200 {
-		return Response{}, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		logrus.Error(err)
-		return Response{}, err
-	}
-
-	var response Response
-	err = json.Unmarshal(body, &response)
-	return response, err
-}
-
-func (c Collector) statsFromPrestoSQL(cluster ClusterInfo) (Response, error) {
+func (c Collector) readClusterStats(cluster ClusterInfo) (Response, error) {
 	login, err := c.login(cluster)
 	if err != nil {
 		return Response{}, err
@@ -182,7 +150,6 @@ func (c Collector) statsFromPrestoSQL(cluster ClusterInfo) (Response, error) {
 	if err != nil {
 		return Response{}, err
 	}
-
 
 	defer resp.Body.Close()
 
