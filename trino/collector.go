@@ -62,7 +62,7 @@ var (
 	)
 	up = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "up"),
-		"Presto health check.",
+		"trino-exporter health check.",
 		[]string{"cluster_name"}, nil,
 	)
 )
