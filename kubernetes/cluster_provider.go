@@ -87,7 +87,7 @@ func (k *ClusterProvider) Provide() (map[string]trino.ClusterInfo, error) {
 				return nil, err
 			}
 
-			name := fmt.Sprintf("%s,%s", svc.Namespace, svc.Name)
+			name := fmt.Sprintf("%s/%s", svc.Namespace, svc.Name)
 
 			logrus.Infof("discovered service %s", svc.Name)
 			coordinators[name] = trino.ClusterInfo{
