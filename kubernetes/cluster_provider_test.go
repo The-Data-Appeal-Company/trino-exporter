@@ -180,11 +180,26 @@ func TestClusterProviderKubernetes(t *testing.T) {
 
 	client := k8sClient{clientset}
 
-	provider := NewClusterProvider(client, "cluster.local")
+	provider := NewClusterProvider(client, "cluster.local", "")
 
 	clusters, err := provider.Provide()
 	require.NoError(t, err)
 
 	require.Len(t, clusters, 1)
+
+}
+
+func TestClusterProviderKubernetesWithSvcLabelSelector(t *testing.T) {
+
+	clientset := fake.NewSimpleClientset()
+
+	client := k8sClient{clientset}
+
+	provider := NewClusterProvider(client, "cluster.local", "trino.distribution=trino-exportersql")
+
+	clusters, err := provider.Provide()
+	require.NoError(t, err)
+
+	require.Len(t, clusters, 3)
 
 }

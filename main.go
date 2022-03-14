@@ -19,6 +19,8 @@ func main() {
 	metricsPath := flag.String("path", "/metrics", "exporter metrics path")
 	awsAutoDiscovery := flag.Bool("aws-autodiscovery", false, "autodiscover cluster in aws (may require permissions)")
 	k8sAutoDiscovery := flag.Bool("k8s-autodiscovery", false, "autodiscover cluster in k8s (may require permissions)")
+
+	k8sDiscoveryLabelSelector := flag.String("k8s-svc-label-selector", "", "k8s service label selector")
 	clustersRaw := flag.String("cluster", "", "clusters to monitor separated by ',' eg: http://127.0.0.1:8889,http://127.0.0.1:8888")
 
 	flag.Parse()
@@ -39,7 +41,7 @@ func main() {
 	if *k8sAutoDiscovery {
 		log.Info("enabled k8s in cluster discovery")
 
-		provider, err := k8s.NewInClusterProvider("cluster.local")
+		provider, err := k8s.NewInClusterProvider("cluster.local", *k8sDiscoveryLabelSelector)
 		if err != nil {
 			log.Fatal(err)
 		}

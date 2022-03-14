@@ -19,12 +19,13 @@ const (
 )
 
 type ClusterProvider struct {
-	k8sClient     k8s.Interface
-	cache         *cache.Cache
-	clusterDomain string
+	k8sClient        k8s.Interface
+	cache            *cache.Cache
+	clusterDomain    string
+	svcLabelSelector string
 }
 
-func NewInClusterProvider(clusterDomain string) (*ClusterProvider, error) {
+func NewInClusterProvider(clusterDomain string, svcLabelSelector string) (*ClusterProvider, error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
@@ -35,14 +36,15 @@ func NewInClusterProvider(clusterDomain string) (*ClusterProvider, error) {
 		return nil, err
 	}
 
-	return NewClusterProvider(k8sClient, clusterDomain), nil
+	return NewClusterProvider(k8sClient, clusterDomain, svcLabelSelector), nil
 }
 
-func NewClusterProvider(k8sClient k8s.Interface, clusterDomain string) *ClusterProvider {
+func NewClusterProvider(k8sClient k8s.Interface, clusterDomain string, svcLabelSelector string) *ClusterProvider {
 	return &ClusterProvider{
-		k8sClient:     k8sClient,
-		clusterDomain: clusterDomain,
-		cache:         cache.New(10*time.Minute, 24*time.Hour),
+		k8sClient:        k8sClient,
+		clusterDomain:    clusterDomain,
+		svcLabelSelector: svcLabelSelector,
+		cache:            cache.New(10*time.Minute, 24*time.Hour),
 	}
 }
 
@@ -65,7 +67,9 @@ func (k *ClusterProvider) Provide() (map[string]trino.ClusterInfo, error) {
 	}
 
 	for _, ns := range namespaces.Items {
-		services, err := k.k8sClient.CoreV1().Services(ns.Name).List(ctx, v1.ListOptions{})
+		services, err := k.k8sClient.CoreV1().Services(ns.Name).List(ctx, v1.ListOptions{
+			LabelSelector: k.svcLabelSelector,
+		})
 
 		if err != nil {
 			return nil, err
